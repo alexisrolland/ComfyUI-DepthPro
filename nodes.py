@@ -1,12 +1,12 @@
-import os
 import numpy as np
+import os
 import torch
-from tqdm import trange
 from torchvision.transforms import Normalize
+from tqdm import trange
 
 import comfy.utils
-import model_management 
 import folder_paths
+import model_management 
 
 from . import depth_pro
 
@@ -20,10 +20,10 @@ class LoadDepthPro:
                 },
             }
     
-    RETURN_TYPES = ("DEPTH_PRO_MODEL",)
-    RETURN_NAMES = ("depth_pro_model",)
+    RETURN_TYPES = ("DEPTHPRO_MODEL",)
+    RETURN_NAMES = ("DEPTHPRO_MODEL",)
     FUNCTION = "load_model"
-    CATEGORY = "Depth-Pro"
+    CATEGORY = "DepthPro"
     
     def load_model(self, precision):
         device = model_management.get_torch_device()
@@ -51,29 +51,31 @@ class LoadDepthPro:
         return (model_dict,)
 
 
-class DepthPro:
+class RunDepthPro:
     @classmethod
     def INPUT_TYPES(s):
         return {
             "required": {
-                "depth_pro_model": ("DEPTH_PRO_MODEL",),
-                "image": ("IMAGE",),
-                },
-            }
+                "DEPTHPRO_MODEL": ("DEPTHPRO_MODEL",),
+                "IMAGE": ("IMAGE",),
+                "invert": ("BOOLEAN", {"default": True,}),
+                "gamma": ("FLOAT", {"default": 0.35, "min": 0.01, "max": 100, "step": 0.01}),
+            },
+        }
     
     RETURN_TYPES = ("IMAGE", "LIST", "FLOAT",)
-    RETURN_NAMES = ("metric_depth", "focal_list", "focal_avg",)
+    RETURN_NAMES = ("IMAGE", "focal_list", "focal_avg",)
     FUNCTION = "estimate_depth"
-    CATEGORY = "Depth-Pro"
+    CATEGORY = "DepthPro"
     
-    def estimate_depth(self, depth_pro_model, image):
-        model = depth_pro_model["model"]
-        device = depth_pro_model["device"]
-        dtype = depth_pro_model["dtype"]
+    def estimate_depth(self, DEPTHPRO_MODEL, IMAGE, invert, gamma):
+        model = DEPTHPRO_MODEL["model"]
+        device = DEPTHPRO_MODEL["device"]
+        dtype = DEPTHPRO_MODEL["dtype"]
         
         transform = Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
         
-        rgb = image.unsqueeze(0) if len(image.shape) < 4 else image
+        rgb = IMAGE.unsqueeze(0) if len(IMAGE.shape) < 4 else IMAGE
         rgb = rgb.movedim(-1, 1) # BCHW
         
         depth = []
@@ -93,73 +95,17 @@ class DepthPro:
         focal_list = focal_px
         focal_avg = np.mean(focal_px)
         
-        return (depth, focal_list, focal_avg)
-
-
-class MetricDepthToRelative:
-    @classmethod
-    def INPUT_TYPES(s):
-        return {
-            "required": {
-                "depth": ("IMAGE",),
-                "per_image": ("BOOLEAN", {"default": True,}),
-                "invert": ("BOOLEAN", {"default": True,}),
-                "gamma": ("FLOAT", {"default": 1.0, "min": 0.01, "max": 100, "step": 0.01}),
-                },
-            }
-    
-    RETURN_TYPES = ("IMAGE",)
-    RETURN_NAMES = ("depth",)
-    FUNCTION = "convert_depth"
-    CATEGORY = "Depth-Pro"
-    
-    def convert_depth(self, depth, per_image, invert, gamma):
+        # Convert depth metrics to image
         relative_depth = 1 / (1 + depth.detach().clone())
-        
-        if per_image:
-            for i in range(relative_depth.size(0)):
-                relative_depth[i] = relative_depth[i] - relative_depth[i].min()
-                relative_depth[i] = relative_depth[i] / relative_depth[i].max()
-        else:
-            relative_depth = relative_depth - relative_depth.min()
-            relative_depth = relative_depth / relative_depth.max()
+
+        for i in range(relative_depth.size(0)):
+            relative_depth[i] = relative_depth[i] - relative_depth[i].min()
+            relative_depth[i] = relative_depth[i] / relative_depth[i].max()
         
         if not invert:
             relative_depth = 1 - relative_depth
         
         if gamma != 1:
             relative_depth = relative_depth ** (1 / gamma)
-        
-        return (relative_depth,)
 
-
-class MetricDepthToInverse:
-    @classmethod
-    def INPUT_TYPES(s):
-        return {
-            "required": {
-                "depth": ("IMAGE",),
-                },
-            }
-    
-    RETURN_TYPES = ("IMAGE",)
-    RETURN_NAMES = ("depth",)
-    FUNCTION = "convert_depth"
-    CATEGORY = "Depth-Pro"
-    
-    def convert_depth(self, depth):
-        return (1 / (1 + depth.detach().clone()), )
-
-NODE_CLASS_MAPPINGS = {
-    "LoadDepthPro": LoadDepthPro,
-    "DepthPro": DepthPro,
-    "MetricDepthToRelative": MetricDepthToRelative,
-    "MetricDepthToInverse": MetricDepthToInverse,
-    }
-
-NODE_DISPLAY_NAME_MAPPINGS = {
-    "LoadDepthPro": "(Down)Load Depth Pro model",
-    "DepthPro": "Depth Pro",
-    "MetricDepthToRelative": "Metric Depth to Relative",
-    "MetricDepthToInverse": "Metric Depth to Inverse",
-    }
+        return (relative_depth, focal_list, focal_avg)

@@ -1,3 +1,14 @@
-from .nodes import NODE_CLASS_MAPPINGS, NODE_DISPLAY_NAME_MAPPINGS
+from . import nodes
 
-__all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS"]
+# A dictionary that contains all nodes you want to export with their names
+# NOTE: names should be globally unique
+NODE_CLASS_MAPPINGS = {
+    "LoadDepthPro": nodes.LoadDepthPro,
+    "DepthPro": nodes.RunDepthPro
+}
+
+# A dictionary that contains the friendly/humanly readable titles for the nodes
+NODE_DISPLAY_NAME_MAPPINGS = {
+    "LoadDepthPro": "DownLoad And Load DepthPro",
+    "DepthPro": "Run DepthPro",
+}
