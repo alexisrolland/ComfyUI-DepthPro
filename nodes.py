@@ -12,6 +12,17 @@ from . import depth_pro
 
 
 class LoadDepthPro:
+    """Node to download and load DepthPro model."""
+
+    # Node setup for ComfyUI
+    CATEGORY = "DepthPro"
+    FUNCTION = "execute"
+    OUTPUT_NODE = False
+    RETURN_TYPES = ("DEPTHPRO_MODEL",)
+
+    def __init__(self):
+        pass
+
     @classmethod
     def INPUT_TYPES(s):
         return {
@@ -20,12 +31,7 @@ class LoadDepthPro:
                 },
             }
     
-    RETURN_TYPES = ("DEPTHPRO_MODEL",)
-    RETURN_NAMES = ("DEPTHPRO_MODEL",)
-    FUNCTION = "load_model"
-    CATEGORY = "DepthPro"
-    
-    def load_model(self, precision):
+    def execute(self, precision):
         device = model_management.get_torch_device()
         dtype = torch.float16 if precision == "fp16" else torch.float32
         
@@ -52,6 +58,18 @@ class LoadDepthPro:
 
 
 class RunDepthPro:
+    """Node to run DepthPro model."""
+
+    # Node setup for ComfyUI
+    CATEGORY = "DepthPro"
+    FUNCTION = "execute"
+    OUTPUT_NODE = False
+    RETURN_TYPES = ("IMAGE", "LIST", "LIST", "FLOAT",)
+    RETURN_NAMES = ("IMAGE", "METRIC_DEPTH", "FOCAL_LIST", "FOCAL_AVG",)
+
+    def __init__(self):
+        pass
+
     @classmethod
     def INPUT_TYPES(s):
         return {
@@ -62,49 +80,44 @@ class RunDepthPro:
                 "gamma": ("FLOAT", {"default": 0.35, "min": 0.01, "max": 100, "step": 0.01}),
             },
         }
-    
-    RETURN_TYPES = ("IMAGE", "LIST", "LIST", "FLOAT",)
-    RETURN_NAMES = ("IMAGE", "METRIC_DEPTH", "FOCAL_LIST", "FOCAL_AVG",)
-    FUNCTION = "estimate_depth"
-    CATEGORY = "DepthPro"
-    
-    def estimate_depth(self, DEPTHPRO_MODEL, IMAGE, invert, gamma):
+
+    def execute(self, DEPTHPRO_MODEL, IMAGE, invert, gamma):
         model = DEPTHPRO_MODEL["model"]
         device = DEPTHPRO_MODEL["device"]
         dtype = DEPTHPRO_MODEL["dtype"]
-        
+
         transform = Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
-        
+
         rgb = IMAGE.unsqueeze(0) if len(IMAGE.shape) < 4 else IMAGE
         rgb = rgb.movedim(-1, 1) # BCHW
-        
+
         depth = []
         focal_px = []
-        
+
         pbar = comfy.utils.ProgressBar(rgb.size(0)) if comfy.utils.PROGRESS_BAR_ENABLED else None
         for i in trange(rgb.size(0)):
             rgb_image = rgb[i, :3].unsqueeze(0).to(device, dtype=dtype)
             rgb_image = transform(rgb_image)
-            
+
             prediction = model.infer(rgb_image)
             depth.append(prediction["depth"].unsqueeze(-1))
             focal_px.append(prediction["focallength_px"].item())
             if pbar is not None: pbar.update(1)
-        
+
         depth = torch.stack(depth, dim=0).repeat(1,1,1,3)
         focal_list = focal_px
         focal_avg = np.mean(focal_px)
-        
+
         # Convert depth metrics to image
         relative_depth = 1 / (1 + depth.detach().clone())
 
         for i in range(relative_depth.size(0)):
             relative_depth[i] = relative_depth[i] - relative_depth[i].min()
             relative_depth[i] = relative_depth[i] / relative_depth[i].max()
-        
+
         if not invert:
             relative_depth = 1 - relative_depth
-        
+
         if gamma != 1:
             relative_depth = relative_depth ** (1 / gamma)
 

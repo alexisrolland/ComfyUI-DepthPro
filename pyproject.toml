@@ -1,7 +1,7 @@
 [project]
 name = "comfyui-depthpro"
 description = "Custom nodes to run apple/DepthPro model."
-version = "0.1.1"
+version = "1.0.0"
 license = { text = "Apache License 2.0" }
 dependencies = ["timm>=0.9.16", "numpy<2"]
 

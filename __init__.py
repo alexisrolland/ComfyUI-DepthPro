@@ -4,11 +4,11 @@ from . import nodes
 # NOTE: names should be globally unique
 NODE_CLASS_MAPPINGS = {
     "LoadDepthPro": nodes.LoadDepthPro,
-    "DepthPro": nodes.RunDepthPro
+    "RunDepthPro": nodes.RunDepthPro
 }
 
 # A dictionary that contains the friendly/humanly readable titles for the nodes
 NODE_DISPLAY_NAME_MAPPINGS = {
     "LoadDepthPro": "DownLoad And Load DepthPro",
-    "DepthPro": "Run DepthPro",
+    "RunDepthPro": "Run DepthPro",
 }
