@@ -63,8 +63,8 @@ class RunDepthPro:
             },
         }
     
-    RETURN_TYPES = ("IMAGE", "LIST", "FLOAT",)
-    RETURN_NAMES = ("IMAGE", "DEPTH", "FOCAL_LIST", "FOCAL_AVG",)
+    RETURN_TYPES = ("IMAGE", "LIST", "LIST", "FLOAT",)
+    RETURN_NAMES = ("IMAGE", "METRIC_DEPTH", "FOCAL_LIST", "FOCAL_AVG",)
     FUNCTION = "estimate_depth"
     CATEGORY = "DepthPro"
     
