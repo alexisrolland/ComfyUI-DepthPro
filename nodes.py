@@ -64,7 +64,7 @@ class RunDepthPro:
         }
     
     RETURN_TYPES = ("IMAGE", "LIST", "FLOAT",)
-    RETURN_NAMES = ("IMAGE", "focal_list", "focal_avg",)
+    RETURN_NAMES = ("IMAGE", "DEPTH", "FOCAL_LIST", "FOCAL_AVG",)
     FUNCTION = "estimate_depth"
     CATEGORY = "DepthPro"
     
@@ -108,4 +108,4 @@ class RunDepthPro:
         if gamma != 1:
             relative_depth = relative_depth ** (1 / gamma)
 
-        return (relative_depth, focal_list, focal_avg)
+        return (relative_depth, depth, focal_list, focal_avg)
